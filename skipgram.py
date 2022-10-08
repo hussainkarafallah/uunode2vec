@@ -4,7 +4,7 @@
 
 
 from typing import Generator
-
+import torch.nn as nn
 
 class SkipGram:
 
@@ -22,6 +22,6 @@ class SkipGram:
 
     def train(self , walk_generator : Generator):
         for walk in walk_generator:
-            # do some shit
+            
             print(walk)
 
