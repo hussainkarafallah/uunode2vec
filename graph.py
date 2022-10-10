@@ -8,6 +8,7 @@ class Graph:
 
     def add_edge(self , u : int , v : int , w : float):
         self.adj[u].append( (v , w) )
+        self.adj[v].append( (u , w) )
 
     
 
