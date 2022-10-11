@@ -2,105 +2,86 @@
 # I never implemented this myself (always used gensim)
 # feel free to get any implementation
 
-import io
-import re
-import string
-import tqdm
-
 import numpy as np
+import torch
+import torch.nn as nn
+import torch.optim as optim
 
-import tensorflow as tf
-from tensorflow.keras import layers
+#should be number of nodes
+vocabSize=19240
+#number of weights/attributes associated with each word
+embeddingSize=10
 
-from typing import Generator
+#generates word pairs between target words and their possible contexts
+def generateSkipgram(walk, windowSize=1):
+   skip_grams = []
+   for i in range(windowSize, len(walk) - windowSize):
+       target = walk[i]
+       #change this if changing windowSize
+       context = [walk[i - windowSize], walk[i + windowSize]]
+       for w in context:
+           skip_grams.append([target, w])
 
-SEED = 42
-AUTOTUNE = tf.data.AUTOTUNE
+   return skip_grams
 
-walks = []
+class skipgramModel(nn.Module):
 
+    def __init__(self):
 
-class SkipGram:
+        super(skipgramModel, self).__init__()
 
-    def __init__(self , n : int , dim : int , k : int , lr : float):
-        self.lr = lr
-        self.k = k
-        self.dim = dim
-        self.n = n
-        # self.embeddings = np.array((n , dim))
-        # ....
+        #initial weights, each node has embeddingSize weights associated to it, this later becomes the embedding
+        self.embedding = nn.Embedding(vocabSize, embeddingSize)
 
-    # Generates skip-gram pairs with negative sampling for a list of sequences
-    # (int-encoded sentences) based on window size, number of negative samples
-    # and vocabulary size.
-    def generate_training_data(sequences, window_size, num_ns, vocab_size, seed):
-        # Elements of each training example are appended to these lists.
-        targets, contexts, labels = [], [], []
+        #first layer weights
+        self.W1 = nn.Linear(embeddingSize, embeddingSize, bias=False)
+        #output layer weights
+        self.W2 = nn.Linear(embeddingSize, vocabSize, bias=False)
 
-        # Build the sampling table for `vocab_size` tokens.
-        sampling_table = tf.keras.preprocessing.sequence.make_sampling_table(vocab_size)
+    def forward(self, X):
+        #receives input node
+        embeddings = self.embedding(X)
+        #feeds input node into hidden layer, which goes to a relu activation
+        hidden_layer = nn.functional.relu(self.W1(embeddings))
+        #activates the output
+        output_layer = self.W2(hidden_layer)
+        return output_layer
 
-        # Iterate over all sequences (sentences) in the dataset.
-        for sequence in tqdm.tqdm(sequences):
+    criterion = nn.CrossEntropyLoss()
+    optimizer = optim.Adam(model.parameters(), lr=0.001)
 
-            # Generate positive skip-gram pairs for a sequence (sentence).
-            positive_skip_grams, _ = tf.keras.preprocessing.sequence.skipgrams(
-                sequence,
-                vocabulary_size=vocab_size,
-                sampling_table=sampling_table,
-                window_size=window_size,
-                negative_samples=0)
+#everythin below hasn't been reviewed
+for epoch in tqdm(range(150000), total=len(generateSkipgram(walk))):
+    input_batch, target_batch = random_batch(generateSkipgram(walk))
+    input_batch = torch.LongTensor(input_batch)
+    target_batch = torch.LongTensor(target_batch)
 
-            # Iterate over each positive skip-gram pair to produce training examples
-            # with a positive context word and negative samples.
-            for target_word, context_word in positive_skip_grams:
-                context_class = tf.expand_dims(
-                    tf.constant([context_word], dtype="int64"), 1)
-                negative_sampling_candidates, _, _ = tf.random.log_uniform_candidate_sampler(
-                    true_classes=context_class,
-                    num_true=1,
-                    num_sampled=num_ns,
-                    unique=True,
-                    range_max=vocab_size,
-                    seed=seed,
-                    name="negative_sampling")
+    optimizer.zero_grad()
+    output = model(input_batch)
 
-            # Build context and label vectors (for one target word)
-            negative_sampling_candidates = tf.expand_dims(
-                negative_sampling_candidates, 1)
+    # output : [batch_size, voc_size], target_batch : [batch_size] (LongTensor, not one-hot)
+    loss = criterion(output, target_batch)
+    if (epoch + 1) % 10000 == 0:
+        print('Epoch:', '%04d' % (epoch + 1), 'cost =', '{:.6f}'.format(loss))
 
-            context = tf.concat([context_class, negative_sampling_candidates], 0)
-            label = tf.constant([1] + [0]*num_ns, dtype="int64")
+    loss.backward(retain_graph=True)
+    optimizer.step()
 
-            # Append each element from the training example to global lists.
-            targets.append(target_word)
-            contexts.append(context)
-            labels.append(label)
+def testSkipgram(test_data, model):
+    correct_ct = 0
 
-        return targets, contexts, labels
+    for i in range(len(test_data)):
+        input_batch, target_batch = random_batch(test_data)
+        input_batch = torch.LongTensor(input_batch)
+        target_batch = torch.LongTensor(target_batch)
+
+        model.zero_grad()
+        _, predicted = torch.max(model(input_batch), 1)
 
 
-    def train(self , walk_generator : Generator):
-        window_size = 2
-        vocab_size = 19240
-        num_ns = 4
 
-        for walk in walk_generator:
-            walks.append(walk)
 
-        targets, contexts, labels = generate_training_data(
-        sequences=walks,
-        window_size=2,
-        num_ns=4,
-        vocab_size=vocab_size,
-        seed=SEED)
+        if predicted[0] == target_batch[0]:
+                correct_ct += 1
 
-        targets = np.array(targets)
-        contexts = np.array(contexts)[:,:,0]
-        labels = np.array(labels)
-
-        BATCH_SIZE = 1024
-        BUFFER_SIZE = 10000
-        dataset = tf.data.Dataset.from_tensor_slices(((targets, contexts), labels))
-        dataset = dataset.shuffle(BUFFER_SIZE).batch(BATCH_SIZE, drop_remainder=True)
-        dataset = dataset.cache().prefetch(buffer_size=AUTOTUNE)
+    print('Accuracy: {:.1f}% ({:d}/{:d})'.format(correct_ct/len(test_data)*100, correct_ct, len(test_data)))
