@@ -17,6 +17,18 @@ class skipgram:
     learningRate = 0.001
     epochs = 150000
 
+    def __init__(walks, embeddingSize, batch_size, windowSize, learningRate, epochs):
+        #should be number of nodes
+        vocabSize=19240
+        #number of weights/attributes associated with each node
+        embeddingSize=10
+        
+        self.walks = walks
+        self.batch_size = batch_size
+        self.windowSize = windowSize
+        self.learningRate = learningRate
+        self.epochs = epochs
+
     #defining the model as a pytorch model
     class skipgramModel(nn.Module):
 
@@ -24,6 +36,8 @@ class skipgram:
         embeddingSize = 10
 
         def __init__(self, vocabSize, embeddingSize):
+
+            print("instatiated model")
 
             super(skipgramModel, self).__init__()
 
@@ -43,20 +57,6 @@ class skipgram:
             #activates the output
             output_layer = self.W2(hidden_layer)
             return output_layer
-
-
-
-    def __init__(walks, embeddingSize, batch_size, windowSize, learningRate, epochs):
-        #should be number of nodes
-        vocabSize=19240
-        #number of weights/attributes associated with each node
-        embeddingSize=10
-        
-        self.walks = walks
-        self.batch_size = batch_size
-        self.windowSize = windowSize
-        self.learningRate = learningRate
-        self.epochs = epochs
 
     #function for generating batches
     def randomBatch(skipGrams):
