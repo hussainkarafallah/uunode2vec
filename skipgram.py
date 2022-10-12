@@ -1,29 +1,48 @@
-# I recommend looking for a pytorch or tensorflow >= 2.0 implementation
-# I never implemented this myself (always used gensim)
-# feel free to get any implementation
-
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
 
+#this is a pytorch implementation. Code is throughly commented
+
 #should be number of nodes
 vocabSize=19240
-#number of weights/attributes associated with each word
+#number of weights/attributes associated with each node
 embeddingSize=10
 
-#generates word pairs between target words and their possible contexts
+#function for generating batches
+def randomBatch(skipGrams):
+    randomInputs = []
+    randomLabels = []
+
+    #generates a range of random indexes of size batch_size, replace false means generated indexes are unique
+    randomIndex = np.random.choice(range(len(skipGrams)), batch_size, replace=False)
+
+    #for every randomly generated index, appends target and context to their arrays
+    for i in randomIndex:
+        randomInputs.append(skipGrams[i][0])  # target
+        randomLabels.append(skipGrams[i][1])  # context word
+
+    return randomInputs, randomLabels
+
+#generates node pairs between target nodes and their possible contexts
 def generateSkipgram(walk, windowSize=1):
-   skip_grams = []
+   skipGrams = []
    for i in range(windowSize, len(walk) - windowSize):
        target = walk[i]
        #change this if changing windowSize
        context = [walk[i - windowSize], walk[i + windowSize]]
        for w in context:
-           skip_grams.append([target, w])
+           skipGrams.append([target, w])
 
-   return skip_grams
+   return skipGrams
 
+def generateAllSkipgrams(walk_generator, windowSize=1):
+    skipGrams = []
+    for walk in walk_generator:
+        skipGrams.append(generateSkipgram(walk, windowSize))
+
+#defining the model as a pytorch model
 class skipgramModel(nn.Module):
 
     def __init__(self):
@@ -47,41 +66,43 @@ class skipgramModel(nn.Module):
         output_layer = self.W2(hidden_layer)
         return output_layer
 
+
+
+def trainModel(walk_generator, windowSize=1, training_epochs=150000):
+
+    #instantiates skipgram
+    model = skipgramModel()
+    #loss function
     criterion = nn.CrossEntropyLoss()
+    #pytorch optimizer
     optimizer = optim.Adam(model.parameters(), lr=0.001)
 
-#everythin below hasn't been reviewed
-for epoch in tqdm(range(150000), total=len(generateSkipgram(walk))):
-    input_batch, target_batch = random_batch(generateSkipgram(walk))
-    input_batch = torch.LongTensor(input_batch)
-    target_batch = torch.LongTensor(target_batch)
-
-    optimizer.zero_grad()
-    output = model(input_batch)
-
-    # output : [batch_size, voc_size], target_batch : [batch_size] (LongTensor, not one-hot)
-    loss = criterion(output, target_batch)
-    if (epoch + 1) % 10000 == 0:
-        print('Epoch:', '%04d' % (epoch + 1), 'cost =', '{:.6f}'.format(loss))
-
-    loss.backward(retain_graph=True)
-    optimizer.step()
-
-def testSkipgram(test_data, model):
-    correct_ct = 0
-
-    for i in range(len(test_data)):
-        input_batch, target_batch = random_batch(test_data)
+    #genereates all skipgrams for all walks
+    skipGrams = generateAllSkipgrams(walk_generator, windowSize)
+    #forward and backproprag of the model using generated skipgrams
+    #te quiero demasiado
+    for epoch in tqdm(range(training_epochs), total=len(skipGrams)):
+        #generates random batches
+        input_batch, target_batch = random_batch(skipGrams)
+        #puts random batches in a pytorch longtensor for faster computing
         input_batch = torch.LongTensor(input_batch)
         target_batch = torch.LongTensor(target_batch)
 
-        model.zero_grad()
-        _, predicted = torch.max(model(input_batch), 1)
+        #reset gradient
+        optimizer.zero_grad()
 
+        #forward proprag
+        output = model(input_batch)
 
+        #calculate loss
+        loss = criterion(output, target_batch)
 
+        #show loss every 10000 epochs
+        if (epoch + 1) % 10000 == 0:
+            print('Epoch:', '%04d' % (epoch + 1), 'cost =', '{:.6f}'.format(loss))
 
-        if predicted[0] == target_batch[0]:
-                correct_ct += 1
+        #backward proprag
+        loss.backward(retain_graph=True)
 
-    print('Accuracy: {:.1f}% ({:d}/{:d})'.format(correct_ct/len(test_data)*100, correct_ct, len(test_data)))
+        #applies calculated correction
+        optimizer.step()
