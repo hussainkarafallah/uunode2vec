@@ -7,8 +7,11 @@ class Graph:
         self.adj = defaultdict(list)
 
     def add_edge(self , u : int , v : int , w : float):
-        self.adj[u].append( (v , w) )
-        self.adj[v].append( (u , w) )
+        self.adj[u].append( (v , float(w)) )
+        self.adj[v].append( (u , float(w)) )
+
+    def items(self):
+        return self.adj.items()
 
     
 
