@@ -3,7 +3,7 @@ import pandas as pd
 
 def load_and_process() -> Graph:
     # load data
-    df = pd.read_csv('players_22.csv')  #dtype warning while loading data
+    df = pd.read_csv('players_22.csv', low_memory=False)  #dtype warning while loading data
 
     #get dataset for players in English premier league
     df_prem = df[df['league_name'] == 'English Premier League']

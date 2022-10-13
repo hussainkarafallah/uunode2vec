@@ -3,8 +3,38 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from walk_generator import WalkGenerator
+from tqdm import tqdm
 
 #this is a pytorch implementation. Code is throughly commented
+
+#defining the model as a pytorch model
+class skipgramModel(nn.Module):
+
+    vocabSize = 19240
+    embeddingSize = 10
+
+    def __init__(self):
+
+        print("instatiated model")
+
+        super(skipgramModel, self).__init__()
+
+        #initial weights, each node has embeddingSize weights associated to it, this later becomes the embedding
+        self.embedding = nn.Embedding(self.vocabSize, self.embeddingSize)
+
+        #first layer weights
+        self.W1 = nn.Linear(self.embeddingSize, self.embeddingSize, bias=False)
+        #output layer weights
+        self.W2 = nn.Linear(self.embeddingSize, self.vocabSize, bias=False)
+
+    def forward(self, X):
+        #receives input node
+        embeddings = self.embedding(X)
+        #feeds input node into hidden layer, which goes to a relu activation
+        hidden_layer = nn.functional.relu(self.W1(embeddings))
+        #activates the output
+        output_layer = self.W2(hidden_layer)
+        return output_layer
 
 
 class skipgram:
@@ -12,16 +42,16 @@ class skipgram:
     walks = []
     embeddingSize = 10
     vocabSize = 19240
-    batch_size = vocabSize
+    batch_size = 2
     windowSize = 1
     learningRate = 0.001
     epochs = 150000
 
-    def __init__(walks, embeddingSize, batch_size, windowSize, learningRate, epochs):
+    def __init__(self, walks, embeddingSize, batch_size, windowSize, learningRate, epochs):
         #should be number of nodes
-        vocabSize=19240
+        self.vocabSize=19240
         #number of weights/attributes associated with each node
-        embeddingSize=10
+        self.embeddingSize=embeddingSize
         
         self.walks = walks
         self.batch_size = batch_size
@@ -29,37 +59,8 @@ class skipgram:
         self.learningRate = learningRate
         self.epochs = epochs
 
-    #defining the model as a pytorch model
-    class skipgramModel(nn.Module):
-
-        vocabSize = 19240
-        embeddingSize = 10
-
-        def __init__(self, vocabSize, embeddingSize):
-
-            print("instatiated model")
-
-            super(skipgramModel, self).__init__()
-
-            #initial weights, each node has embeddingSize weights associated to it, this later becomes the embedding
-            self.embedding = nn.Embedding(vocabSize, embeddingSize)
-
-            #first layer weights
-            self.W1 = nn.Linear(embeddingSize, embeddingSize, bias=False)
-            #output layer weights
-            self.W2 = nn.Linear(embeddingSize, vocabSize, bias=False)
-
-        def forward(self, X):
-            #receives input node
-            embeddings = self.embedding(X)
-            #feeds input node into hidden layer, which goes to a relu activation
-            hidden_layer = nn.functional.relu(self.W1(embeddings))
-            #activates the output
-            output_layer = self.W2(hidden_layer)
-            return output_layer
-
     #function for generating batches
-    def randomBatch(skipGrams):
+    def randomBatch(self, skipGrams):
         randomInputs = []
         randomLabels = []
 
@@ -70,7 +71,7 @@ class skipgram:
         for i in randomIndex:
             randomInputs.append(skipGrams[i][0])  # target
             randomLabels.append(skipGrams[i][1])  # context word
-
+            print(skipGrams[i])
         return randomInputs, randomLabels
 
     #generates node pairs between target nodes and their possible contexts
@@ -88,24 +89,25 @@ class skipgram:
     def generateAllSkipgrams(self):
         skipGrams = []
         for walk in self.walks:
-            skipGrams.append(generateSkipgram(walk))
+            skipGrams.append(self.generateSkipgram(walk))
+        return skipGrams
 
-    def trainModel():
+    def trainModel(self):
 
         #instantiates skipgram
-        model = skipgramModel(self.vocabSize, self.embeddingSize)
+        model = skipgramModel()
         #loss function
         criterion = nn.CrossEntropyLoss()
         #pytorch optimizer
         optimizer = optim.Adam(model.parameters(), self.learningRate)
 
         #genereates all skipgrams for all walks
-        skipGrams = generateAllSkipgrams()
+        skipGrams = self.generateAllSkipgrams()
         #forward and backproprag of the model using generated skipgrams
         #te quiero demasiado
-        for epoch in tqdm(range(self.training_epochs), total=len(skipGrams)):
+        for epoch in tqdm(range(self.epochs), total=len(skipGrams)):
             #generates random batches
-            input_batch, target_batch = random_batch(skipGrams)
+            input_batch, target_batch = self.randomBatch(skipGrams)
             #puts random batches in a pytorch longtensor for faster computing
             input_batch = torch.LongTensor(input_batch)
             target_batch = torch.LongTensor(target_batch)
