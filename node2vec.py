@@ -15,9 +15,16 @@ def node2vec(
     
 #outside of function so it runs and we can test it
 graph = load_and_process()
-generator = WalkGenerator(graph , p=1, q=1, walk_length=10 , walks_per_node=5)
-skip_gram = skipgram(generator.generate(), embeddingSize=10, batch_size=2, windowSize=1, learningRate=0.01, epochs=150000)
+print("PASSED PREPROCESS")
+generator = WalkGenerator(graph , p=1, q=1, walk_length=10 , per_node=5)
+print("PASSED GEN")
+generator.construct()
+walks = generator.generate()
+print(walks)
+skip_gram = skipgram(walks, 10, 2, 1, 0.01, 150000)
+print("PASSED SKIPGRAM")
 skip_gram.trainModel()
+print("TRAINED")
 
 
 
