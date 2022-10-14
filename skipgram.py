@@ -10,7 +10,7 @@ from tqdm import tqdm
 #defining the model as a pytorch model
 class skipgramModel(nn.Module):
 
-    vocabSize = 19240
+    vocabSize = 652
     embeddingSize = 10
 
     def __init__(self):
@@ -39,25 +39,42 @@ class skipgramModel(nn.Module):
 
 class skipgram:
 
+    player2idx = {}
+    idx2player = {}
     walks = []
+    walksArray = []
+    players = []
     embeddingSize = 10
-    vocabSize = 19240
+    vocabSize = 652
     batch_size = 2
     windowSize = 1
     learningRate = 0.001
     epochs = 150000
 
+
+    def tokenize(self):
+        for walk in self.walks:
+            self.walksArray.append(walk)
+            for node in walk:
+                if node not in self.players:
+                    self.players.append(node)
+
+        self.player2idx = {w: idx for (idx, w) in enumerate(self.players)}
+        self.idx2player = {idx: w for (idx, w) in enumerate(self.players)}
+
+        self.vocabSize = len(self.players)
+
     def __init__(self, walks, embeddingSize, batch_size, windowSize, learningRate, epochs):
-        #should be number of nodes
-        self.vocabSize=19240
         #number of weights/attributes associated with each node
+        self.vocabSize = 652
         self.embeddingSize=embeddingSize
-        
         self.walks = walks
         self.batch_size = batch_size
         self.windowSize = windowSize
         self.learningRate = learningRate
         self.epochs = epochs
+
+        self.tokenize()
 
     #function for generating batches
     def randomBatch(self, skipGrams):
@@ -65,22 +82,23 @@ class skipgram:
         randomLabels = []
 
         #generates a range of random indexes of size batch_size, replace false means generated indexes are unique
+        print("aaaaaaaaaaaaaa"+str(skipGrams))
         randomIndex = np.random.choice(range(len(skipGrams)), self.batch_size, replace=False)
 
         #for every randomly generated index, appends target and context to their arrays
         for i in randomIndex:
             randomInputs.append(skipGrams[i][0])  # target
             randomLabels.append(skipGrams[i][1])  # context word
-            print(skipGrams[i])
+            #print(skipGrams[i])
         return randomInputs, randomLabels
 
     #generates node pairs between target nodes and their possible contexts
     def generateSkipgram(self, walk):
         skipGrams = []
         for i in range(self.windowSize, len(walk) - self.windowSize):
-            target = walk[i]
+            target = self.player2idx[walk[i]]
             #change this if changing windowSize
-            context = [walk[i - self.windowSize], walk[i + self.windowSize]]
+            context = [self.player2idx[walk[i- self.windowSize]], self.player2idx[walk[i+ self.windowSize]]]
             for w in context:
                 skipGrams.append([target, w])
 
@@ -88,7 +106,7 @@ class skipgram:
 
     def generateAllSkipgrams(self):
         skipGrams = []
-        for walk in self.walks:
+        for walk in self.walksArray:
             skipGrams.append(self.generateSkipgram(walk))
         return skipGrams
 
@@ -116,13 +134,15 @@ class skipgram:
             optimizer.zero_grad()
 
             #forward proprag
+            #print("aaaa" + str(input_batch))
             output = model(input_batch)
 
             #calculate loss
+            print(np.shape(output), np.shape(target_batch))
             loss = criterion(output, target_batch)
 
-            #show loss every 10000 epochs
-            if (epoch + 1) % 10000 == 0:
+            #show loss every 100 epochs
+            if (epoch + 1) % 100 == 0:
                 print('Epoch:', '%04d' % (epoch + 1), 'cost =', '{:.6f}'.format(loss))
 
             #backward proprag
