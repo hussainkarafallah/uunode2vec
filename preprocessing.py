@@ -34,12 +34,12 @@ def load_and_process() -> Graph:
             
             if(len(player1['player_positions']) == 1 and len(player2['player_positions']) == 1):
                 if(player1['player_positions'][0] == player2['player_positions'][0]):
-                    g.add_edge(player1['index'], player2['index'], w2)
+                    g.add_edge(player1['short_name'], player2['short_name'], w2)
 
             if(len(set(player1['player_positions']).intersection(player2['player_positions'])) >= 2):
-                 g.add_edge(player1['index'], player2['index'], w1)
+                 g.add_edge(player1['short_name'], player2['short_name'], w1)
 
             if(player1['club_name'] == player2['club_name']):
-                g.add_edge(player1['index'], player2['index'], w2)
+                g.add_edge(player1['short_name'], player2['short_name'], w2)
 
     return g

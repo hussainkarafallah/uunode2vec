@@ -4,6 +4,7 @@ import torch.nn as nn
 import torch.optim as optim
 from walk_generator import WalkGenerator
 from tqdm import tqdm
+import matplotlib.pyplot as plt
 
 #this is a pytorch implementation. Code is throughly commented
 
@@ -35,6 +36,10 @@ class skipgramModel(nn.Module):
         #activates the output
         output_layer = self.W2(hidden_layer)
         return output_layer
+
+    def get_player_emdedding(self, player, player2idx):
+        player = torch.tensor([player2idx[player]])
+        return self.embedding(player).view(1,-1)
 
 
 class skipgram:
@@ -111,7 +116,7 @@ class skipgram:
         correct_ct = 0
 
         for i in range(len(test_data)):
-            input_batch, target_batch = self.randomBatch(test_data)
+            input_batch, target_batch = self.randomBatch()
             input_batch = torch.LongTensor(input_batch)
             target_batch = torch.LongTensor(target_batch)
 
@@ -139,7 +144,7 @@ class skipgram:
         self.generateAllSkipgrams()
         #forward and backproprag of the model using generated skipgrams
         #te quiero demasiado
-        for epoch in tqdm(range(self.epochs), total=len(self.skipGrams)):
+        for epoch in tqdm(range(self.epochs)):
             #generates random batches
             input_batch, target_batch = self.randomBatch()
             #puts random batches in a pytorch longtensor for faster computing
@@ -168,3 +173,11 @@ class skipgram:
             optimizer.step()
 
         self.skipgramTest(self.skipGrams,model)
+
+        plt.figure(figsize=(15,10))
+        for player in self.players:
+            x = model.get_player_emdedding(player, self.player2idx).detach().data.numpy()[0][0]
+            y = model.get_player_emdedding(player, self.player2idx).detach().data.numpy()[0][1]
+            plt.scatter(x, y)
+            plt.annotate(player, xy=(x, y), xytext=(5, 2), textcoords='offset points', ha='right', va='bottom')
+        plt.show()
