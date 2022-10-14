@@ -15,3 +15,5 @@ Even though tasks can be distributed in a good fashion, it's recommended to do t
 * Start doing actual work :) 
 * Reserve sometime to communicate (preferably evening as 2 people are working)
 
+# References
+* Skipgram was implemented based on: https://neptune.ai/blog/word-embeddings-guide

@@ -39,6 +39,7 @@ class skipgramModel(nn.Module):
 
 class skipgram:
 
+    skipGrams = []
     player2idx = {}
     idx2player = {}
     walks = []
@@ -77,38 +78,53 @@ class skipgram:
         self.tokenize()
 
     #function for generating batches
-    def randomBatch(self, skipGrams):
+    def randomBatch(self):
         randomInputs = []
         randomLabels = []
 
         #generates a range of random indexes of size batch_size, replace false means generated indexes are unique
-        print("aaaaaaaaaaaaaa"+str(skipGrams))
-        randomIndex = np.random.choice(range(len(skipGrams)), self.batch_size, replace=False)
+        randomIndex = np.random.choice(range(len(self.skipGrams)), self.batch_size, replace=False)
 
         #for every randomly generated index, appends target and context to their arrays
         for i in randomIndex:
-            randomInputs.append(skipGrams[i][0])  # target
-            randomLabels.append(skipGrams[i][1])  # context word
+            randomInputs.append(self.skipGrams[i][0])  # target
+            randomLabels.append(self.skipGrams[i][1])  # context word
             #print(skipGrams[i])
         return randomInputs, randomLabels
 
     #generates node pairs between target nodes and their possible contexts
     def generateSkipgram(self, walk):
-        skipGrams = []
         for i in range(self.windowSize, len(walk) - self.windowSize):
             target = self.player2idx[walk[i]]
             #change this if changing windowSize
             context = [self.player2idx[walk[i- self.windowSize]], self.player2idx[walk[i+ self.windowSize]]]
             for w in context:
-                skipGrams.append([target, w])
+                self.skipGrams.append([target, w])
 
-        return skipGrams
+        #print(self.skipGrams)
 
     def generateAllSkipgrams(self):
-        skipGrams = []
         for walk in self.walksArray:
-            skipGrams.append(self.generateSkipgram(walk))
-        return skipGrams
+            self.generateSkipgram(walk)
+
+    def Skipgram_test(self, test_data, model):
+        correct_ct = 0
+
+        for i in range(len(test_data)):
+            input_batch, target_batch = random_batch(test_data)
+            input_batch = torch.LongTensor(input_batch)
+            target_batch = torch.LongTensor(target_batch)
+
+            model.zero_grad()
+            _, predicted = torch.max(model(input_batch), 1)
+
+
+
+
+            if predicted[0] == target_batch[0]:
+                    correct_ct += 1
+
+        print('Accuracy: {:.1f}% ({:d}/{:d})'.format(correct_ct/len(test_data)*100, correct_ct, len(test_data)))
 
     def trainModel(self):
 
@@ -120,12 +136,12 @@ class skipgram:
         optimizer = optim.Adam(model.parameters(), self.learningRate)
 
         #genereates all skipgrams for all walks
-        skipGrams = self.generateAllSkipgrams()
+        self.generateAllSkipgrams()
         #forward and backproprag of the model using generated skipgrams
         #te quiero demasiado
-        for epoch in tqdm(range(self.epochs), total=len(skipGrams)):
+        for epoch in tqdm(range(self.epochs), total=len(self.skipGrams)):
             #generates random batches
-            input_batch, target_batch = self.randomBatch(skipGrams)
+            input_batch, target_batch = self.randomBatch()
             #puts random batches in a pytorch longtensor for faster computing
             input_batch = torch.LongTensor(input_batch)
             target_batch = torch.LongTensor(target_batch)
@@ -138,11 +154,11 @@ class skipgram:
             output = model(input_batch)
 
             #calculate loss
-            print(np.shape(output), np.shape(target_batch))
+            #print(np.shape(output), np.shape(target_batch))
             loss = criterion(output, target_batch)
 
-            #show loss every 100 epochs
-            if (epoch + 1) % 100 == 0:
+            #show loss every 10000 epochs
+            if (epoch + 1) % 10000 == 0:
                 print('Epoch:', '%04d' % (epoch + 1), 'cost =', '{:.6f}'.format(loss))
 
             #backward proprag
@@ -150,3 +166,5 @@ class skipgram:
 
             #applies calculated correction
             optimizer.step()
+
+        self.Skipgram_test(self.skipGrams,model)
