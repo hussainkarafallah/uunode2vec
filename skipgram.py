@@ -5,6 +5,7 @@ import torch.optim as optim
 from walk_generator import WalkGenerator
 from tqdm import tqdm
 import matplotlib.pyplot as plt
+from torchviz import make_dot
 
 #this is a pytorch implementation. Code is throughly commented
 
@@ -144,6 +145,7 @@ class skipgram:
         self.generateAllSkipgrams()
         #forward and backproprag of the model using generated skipgrams
         #te quiero demasiado
+
         for epoch in tqdm(range(self.epochs)):
             #generates random batches
             input_batch, target_batch = self.randomBatch()
@@ -172,12 +174,14 @@ class skipgram:
             #applies calculated correction
             optimizer.step()
 
-        self.skipgramTest(self.skipGrams,model)
+        #self.skipgramTest(self.skipGrams,model)
 
-        plt.figure(figsize=(15,10))
-        for player in self.players:
+        plt.figure(figsize=(20,15))
+        for player in self.players[int(len(self.players)*0.4):int(len(self.players)*0.6)]:
             x = model.get_player_emdedding(player, self.player2idx).detach().data.numpy()[0][0]
             y = model.get_player_emdedding(player, self.player2idx).detach().data.numpy()[0][1]
             plt.scatter(x, y)
             plt.annotate(player, xy=(x, y), xytext=(5, 2), textcoords='offset points', ha='right', va='bottom')
         plt.show()
+
+        make_dot(input_batch, params=dict(list(model.named_parameters()))).render("rnn_torchviz", format="png")
