@@ -107,11 +107,11 @@ class skipgram:
         for walk in self.walksArray:
             self.generateSkipgram(walk)
 
-    def Skipgram_test(self, test_data, model):
+    def skipgramTest(self, test_data, model):
         correct_ct = 0
 
         for i in range(len(test_data)):
-            input_batch, target_batch = random_batch(test_data)
+            input_batch, target_batch = self.randomBatch(test_data)
             input_batch = torch.LongTensor(input_batch)
             target_batch = torch.LongTensor(target_batch)
 
@@ -167,4 +167,4 @@ class skipgram:
             #applies calculated correction
             optimizer.step()
 
-        self.Skipgram_test(self.skipGrams,model)
+        self.skipgramTest(self.skipGrams,model)
