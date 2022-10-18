@@ -6,6 +6,7 @@ from walk_generator import WalkGenerator
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 from torchviz import make_dot
+from sklearn.decomposition import PCA
 
 #this is a pytorch implementation. Code is throughly commented
 
@@ -57,6 +58,7 @@ class skipgram:
     windowSize = 1
     learningRate = 0.001
     epochs = 150000
+    model = nn.Module()
 
 
     def tokenize(self):
@@ -135,7 +137,7 @@ class skipgram:
     def trainModel(self):
 
         #instantiates skipgram
-        model = skipgramModel()
+        self.model = skipgramModel()
         #loss function
         criterion = nn.CrossEntropyLoss()
         #pytorch optimizer
@@ -174,14 +176,15 @@ class skipgram:
             #applies calculated correction
             optimizer.step()
 
-        #self.skipgramTest(self.skipGrams,model)
 
+    def showResults(self):
+
+        print(self.skipgramTest(self.skipGrams,model))
+        
         plt.figure(figsize=(20,15))
         for player in self.players[int(len(self.players)*0.4):int(len(self.players)*0.6)]:
-            x = model.get_player_emdedding(player, self.player2idx).detach().data.numpy()[0][0]
-            y = model.get_player_emdedding(player, self.player2idx).detach().data.numpy()[0][1]
-            plt.scatter(x, y)
+            pca = PCA(n_components=2)
+            transformed = pca.fit_transform(model.get_player_emdedding(player, self.player2idx).detach().data.numpy()[0])
+            plt.scatter(transformed[0], transformed[1])
             plt.annotate(player, xy=(x, y), xytext=(5, 2), textcoords='offset points', ha='right', va='bottom')
         plt.show()
-
-        make_dot(input_batch, params=dict(list(model.named_parameters()))).render("rnn_torchviz", format="png")
